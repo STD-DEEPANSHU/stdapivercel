@@ -119,8 +119,7 @@ async def reverse_proxy(request: Request, path: str):
                 headers=forward_headers,
                 content=body if body else None
             )
-            # Read full upstream response before context manager closes
-            content = await upstream_resp.aread()
+            upstream_resp = await client.send(req)
 
             # Strip upstream hop-by-hop headers
             response_headers = {
@@ -129,7 +128,7 @@ async def reverse_proxy(request: Request, path: str):
             }
 
             return Response(
-                content=content,
+                content=upstream_resp.content,
                 status_code=upstream_resp.status_code,
                 headers=response_headers,
                 media_type=upstream_resp.headers.get("content-type")
