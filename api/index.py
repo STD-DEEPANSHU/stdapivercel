@@ -21,7 +21,7 @@ app.add_middleware(
 
 # Upstream Backend URL (Set in Vercel Environment Variables: STDAPIBACKEND_URL)
 # If Heroku URL changes, only change it in Vercel dashboard!
-DEFAULT_BACKEND = "https://stdapibackend-a29fecc9ce50.herokuapp.com"
+DEFAULT_BACKEND = "https://stddownloader-63495018e748.herokuapp.com"
 BACKEND_URL = os.getenv("STDAPIBACKEND_URL", DEFAULT_BACKEND).rstrip("/")
 
 # Client with connection pooling
