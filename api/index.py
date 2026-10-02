@@ -70,25 +70,34 @@ async def reverse_proxy(request: Request, path: str):
     """
     Transparent Reverse Proxy forwarding every request, parameter,
     header, and body payload directly to the upstream stdapibackend on Heroku.
-    Automatically strips Vercel internal function artifacts (e.g. api/index).
     """
-    clean_path = path or ""
+    from urllib.parse import urlencode
 
-    # Check if Vercel forwarded the original URI in headers
-    orig_header = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
-    if orig_header and orig_header not in ("/api/index", "/api/index.py"):
-        clean_path = orig_header.lstrip("/")
+    # Extract original path captured by Vercel rewrite (__vpath=$1)
+    vpath = request.query_params.get("__vpath")
+    if vpath is not None:
+        clean_path = vpath.lstrip("/")
+    else:
+        clean_path = path.lstrip("/")
+        orig_header = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
+        if orig_header and orig_header not in ("/api/index", "/api/index.py"):
+            clean_path = orig_header.lstrip("/")
 
-    if clean_path in ("api/index", "api/index.py", "api"):
-        clean_path = ""
-    elif clean_path.startswith("api/index/"):
-        clean_path = clean_path[len("api/index/"):]
-    elif clean_path.startswith("api/index.py/"):
-        clean_path = clean_path[len("api/index.py/"):]
+        if clean_path in ("api/index", "api/index.py", "api"):
+            clean_path = ""
+        elif clean_path.startswith("api/index/"):
+            clean_path = clean_path[len("api/index/"):]
+        elif clean_path.startswith("api/index.py/"):
+            clean_path = clean_path[len("api/index.py/"):]
 
-    target_url = f"{BACKEND_URL}/{clean_path.lstrip('/')}"
-    if request.url.query:
-        target_url = f"{target_url}?{request.url.query}"
+    # Remove internal __vpath from forwarded query parameters
+    forward_params = dict(request.query_params)
+    forward_params.pop("__vpath", None)
+    query_str = urlencode(forward_params) if forward_params else ""
+
+    target_url = f"{BACKEND_URL}/{clean_path}"
+    if query_str:
+        target_url = f"{target_url}?{query_str}"
 
     # Extract headers (excluding hop-by-hop headers)
     excluded_headers = {"host", "content-length", "connection"}
